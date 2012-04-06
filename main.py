@@ -55,17 +55,13 @@ class main:
         return fPart
         
     def initComboHD(self,*widget):
-        listHD=[]
         self.lcomboHd.clear()
         self.textHDInfo.set_text("")
         
         fPart = self.readFile()
         for line in fPart:
             if re.findall("sd[a-z]\s",line):
-                listHD.append(re.findall("sd[a-z]",line)[0])
-        
-        for uniHD in listHD:
-            self.lcomboHd.append([uniHD])   
+                self.lcomboHd.append(re.findall("sd[a-z]",line))  
         
     def comboHDChanged(self,widget):
         tree_iter = self.comboHD.get_active_iter()  
