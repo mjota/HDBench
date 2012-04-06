@@ -32,25 +32,27 @@ class main:
         
         links = {"on_butPlay_clicked" : self.playBench,
                  "on_butRefresh_clicked" : self.initComboHD,
-                 "on_comboHD_changed" : self.comboHDChanged}
+                 "on_comboHD_changed" : self.comboHDChanged,
+                 "on_window_destroy" : self.quitAll}
         
         builder.connect_signals(links)
         
         self.textHDInfo = builder.get_object("textbufferHDinfo")
         self.lcomboHd = builder.get_object("lComboHD")
+        self.lcomboInc = builder.get_object("lComboInc")
         self.comboHD = builder.get_object("comboHD")
+        self.comboInc = builder.get_object("comboIncr")
+        self.spinInitial = builder.get_object("spinInitial")
+        self.spinInc = builder.get_object("spinInc")
+        self.spinMax = builder.get_object("spinMax")
         
         self.initComboHD()
         
     def readFile(self):
         try:
             fPart = open("/proc/partitions","r")
-        except (NameError, ValueError):
-            print "No existe y es uno de estos"
-        except IOError:
-            print "Error de archivo no encontrado"
         except:
-            print "No existe y el error es otro"
+            print "Error"
         
         return fPart
         
@@ -61,7 +63,9 @@ class main:
         fPart = self.readFile()
         for line in fPart:
             if re.findall("sd[a-z]\s",line):
-                self.lcomboHd.append(re.findall("sd[a-z]",line))  
+                self.lcomboHd.append(re.findall("sd[a-z]",line)) 
+                
+        self.comboHD.set_active(0)
         
     def comboHDChanged(self,widget):
         tree_iter = self.comboHD.get_active_iter()  
@@ -76,10 +80,39 @@ class main:
         modelHD = commandOut.split("model:")[1].split("revision:")[0].strip()
         sizeHD = commandOut.split("size:")[1].split("block")[0].strip()
         
-        return modelHD + "\n" + str(int(sizeHD)/1000000000) + "GB"
+        return modelHD + "\n" + str(int(sizeHD)/10**9) + "GB"
     
     def playBench(self,widget):
-        print "PlayBench"
+        
+        spinIni = self.spinInitial.get_value()
+        spinInc = self.spinInc.get_value()
+        spinMax = self.spinMax.get_value()
+        
+        tree_iter = self.comboHD.get_active_iter()  
+        if tree_iter != None:      
+            model = self.comboHD.get_model()
+            selHD = model[tree_iter][0]
+        else:
+            self.throwError()
+            
+        print selHD
+            
+        tree_iter1 = self.comboInc.get_active_iter()  
+        if tree_iter1 != None:      
+            model1 = self.comboInc.get_model()
+            selInc = model1[tree_iter1][0]
+        else:
+            self.throwError()
+ 
+        print selInc
+        
+        
+    def throwError(self):
+        print "Error"
+        
+    def quitAll(self,widget):
+        print "cerrado"
+        Gtk.main_quit()
         
 if __name__ == '__main__':
     main()
