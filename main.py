@@ -20,8 +20,11 @@
 #==============================================================================
 #
 
+import os
+import shutil
 import commands
 import re
+import time
 from gi.repository import Gtk
 
 class main:
@@ -36,8 +39,6 @@ class main:
                  "on_window_destroy" : self.quitAll,
                  "on_errorWindow_response" : self.closeErrorWindow,
                  "on_errorWindow_close" : self.closeErrorWindow,
-                 "on_PartitionCancel_clicked" : self.messagePartCancel,
-                 "on_PartitionWindow_close" : self.messagePartCancel,
                  "on_comboPartition_changed" : self.comboPartChanged}
         
         builder.connect_signals(links)
@@ -55,15 +56,18 @@ class main:
         self.spinMax = builder.get_object("spinMax")
         self.errorWindow = builder.get_object("messageWindow")
         self.partWindow = builder.get_object("messagePartition")
-        self.buttonOkPart = builder.get_object("buttonOkPart")
+        self.lResultList = builder.get_object("lResultList")
         
         self.initComboHD()
+        try:
+            shutil.rmtree("/run/shm/bench")
+        except:
+            print "Can't remove"
+        finally:
+            os.mkdir("/run/shm/bench")
     
     def closeErrorWindow(self,widget,x):
         self.errorWindow.hide()
-    
-    def messagePartCancel(self,widget):
-        self.partWindow.hide()
         
     def readFile(self,nameFile):
         try:
@@ -127,8 +131,38 @@ class main:
         self.tLaunch = self.calcLaunch(spinIni,spinInc,spinMax,selInc)
         
         self.readPartition(selHD)
+        self.partWindow.set_response_sensitive(Gtk.ResponseType.OK,False)
         self.comboPart.set_active(0)
-        self.partWindow.run()
+        response = self.partWindow.run()
+        self.partWindow.hide()
+        if (response == Gtk.ResponseType.OK):
+            writeTimes = self.launchWrite()
+            readTimes = self.launchRead()
+        
+    def launchWrite(self):
+        mountP = self.lcomboPart[self.comboPart.get_active()][1]
+        writeTimes = []
+        for line in self.tLaunch:
+            os.mkdir("/run/shm/bench/" + str(line[0]))
+            for n in range(0,line[1]):
+                textCommand = "dd bs=" + str(line[0]) + "kB if=/dev/urandom of=/run/shm/bench/" + str(line[0])+ "/" + str(n) + " count=1"
+                print textCommand
+                commands.getoutput(textCommand)
+            textCommand = "dd bs=" + str(line[2]) + "kB if=/dev/urandom of=/run/shm/bench/" + str(line[0])+ "/R count=1"
+            commands.getoutput(textCommand)
+            
+            iniTime = time.time()
+            textCommand = "cp -R /run/shm/bench/" + str(line[0]) + " " + mountP
+            commands.getoutput(textCommand)            
+            endTime = time.time()
+            writeTimes.append([endTime-iniTime])
+            
+            shutil.rmtree("/run/shm/bench/" + str(line[0])) 
+        return writeTimes
+    
+    def launchRead(self):
+        print "Read"          
+            
         
     def comboPartChanged(self,widget):
         try:
@@ -140,10 +174,10 @@ class main:
             freeHD = int(commandOut.splitlines()[1].split()[3])/1024**2
             totReq = self.tLaunch.__len__() * int(self.spinMax.get_value()) / 1024
             if(totReq<freeHD):
-                self.buttonOkPart.set_sensitive(True)
+                self.partWindow.set_response_sensitive(Gtk.ResponseType.OK,True)
                 self.labelPart.set_text("")
             else:
-                self.buttonOkPart.set_sensitive(False)
+                self.partWindow.set_response_sensitive(Gtk.ResponseType.OK,False)
                 labelText = "Not enough free space. " + str(totReq) +"GB required"               
                 self.labelPart.set_markup("<span foreground='red'>" + labelText + "</span>")
         else:
@@ -173,10 +207,15 @@ class main:
         return tLaunch
         
     def throwError(self,textError):
-        self.errorWindow.format_secondary_text(textError)
-        self.errorWindow.run()
+        dialog = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR,Gtk.ButtonsType.CLOSE, "Error")
+        dialog.format_secondary_text(textError)
+        dialog.run()
+
+        dialog.destroy()        
+        
         
     def quitAll(self,widget):
+        shutil.rmtree("/run/shm/bench")
         Gtk.main_quit()
         
 if __name__ == '__main__':
