@@ -41,6 +41,8 @@ class plot:
         plt.ylabel('Time (s)')
         fname= nameHD + '.png'
         plt.savefig(fname,dpi=60)
+        
+        plt.close()
                   
         
         

@@ -25,11 +25,13 @@ import shutil
 import commands
 import re
 import time
-from gi.repository import Gtk
+from gi.repository import Gtk,GObject
+import threading
 import fileCSV,plot,messagePartition
 
-class main:
+class main(threading.Thread):
     def __init__(self):
+        super(main,self).__init__()
         #Crea la ventana de trabajo principal y obtiene los objetos en Glade
         builder = Gtk.Builder();
         builder.add_from_file("main.glade")
@@ -45,21 +47,16 @@ class main:
         builder.connect_signals(links)
         
         self.textHDInfo = builder.get_object("textbufferHDinfo")
-        #self.labelPart = builder.get_object("labelPartition")
         self.lcomboHd = builder.get_object("lComboHD")
         self.lcomboInc = builder.get_object("lComboInc")
-        #self.lcomboPart = builder.get_object("lComboPartition")
         self.comboHD = builder.get_object("comboHD")
         self.comboInc = builder.get_object("comboIncr")
-        #self.comboPart = builder.get_object("comboPartition")
         self.spinInitial = builder.get_object("spinInitial")
         self.spinInc = builder.get_object("spinInc")
         self.spinMax = builder.get_object("spinMax")
         self.errorWindow = builder.get_object("messageWindow")
-        #self.partWindow = builder.get_object("messagePartition")
         self.lResultList = builder.get_object("lResultList")
         self.topBar = builder.get_object("supBar")
-        #self.statusLaunch = builder.get_object("statusLaunch")
         self.butExport = builder.get_object("butExport")
         self.imagePlot = builder.get_object("imagePlot")
         
@@ -67,12 +64,10 @@ class main:
         context.add_class(Gtk.STYLE_CLASS_PRIMARY_TOOLBAR)
         
         self.initComboHD()
-        try:
-            shutil.rmtree("/run/shm/bench")
-        except:
-            print "Can't remove"
-        finally:
-            os.mkdir("/run/shm/bench")
+        
+        shutil.rmtree("/run/shm/bench",ignore_errors=True)
+        os.mkdir("/run/shm/bench")
+            
     
     def closeErrorWindow(self,widget,x):
         self.errorWindow.hide()
@@ -95,6 +90,9 @@ class main:
                 self.lcomboHd.append(re.findall("sd[a-z]",line)) 
                 
         self.comboHD.set_active(0)
+        self.lResultList.clear()
+        #self.imagePlot.set_from_file("blank.svg")
+        self.plotCharge("Hard disk")
         
     def comboHDChanged(self,widget):
         tree_iter = self.comboHD.get_active_iter()  
@@ -137,28 +135,22 @@ class main:
             self.throwError("Select Increase")
         
         self.tLaunch = self.calcLaunch(spinIni,spinInc,spinMax,selInc)
+        self.lResultList.clear()
         
-        #self.readPartition(selHD)
-        #self.partWindow.set_response_sensitive(Gtk.ResponseType.OK,False)
-        #self.comboPart.set_active(0)
         self.mes = messagePartition.messagePartition(self.tLaunch,self.spinMax)
         self.mes.readPartition(selHD)
         self.mes.Window.set_response_sensitive(Gtk.ResponseType.OK,False)
         self.mes.comboPart.set_active(0)
-        #response = self.partWindow.run()
         response = self.mes.Window.run()
-        #self.partWindow.hide()
         self.mes.Window.destroy()
         if (response == Gtk.ResponseType.OK):
-            #win = loadingWindow.ProgressBarWindow()
-            #win.show_all()
             launchW = self.launchWrite()
             launchR = self.launchRead()
             self.nameHD = self.textHDInfo.get_text(self.textHDInfo.get_start_iter(),
                                            self.textHDInfo.get_iter_at_line(1),
                                            include_hidden_chars=True).rstrip()
             self.tablePrint(launchW,launchR)
-            self.plotCharge()
+            self.plotCharge(self.nameHD)
             self.butExport.set_sensitive(True)
         
     def launchWrite(self):
@@ -179,6 +171,7 @@ class main:
             writeTimes.append(endTime-iniTime)
             
             shutil.rmtree("/run/shm/bench/" + str(line[0])) 
+            #GObject.idle_add(self.update)
         return writeTimes
     
     def launchRead(self):
@@ -193,45 +186,19 @@ class main:
             
             shutil.rmtree(mountP + "/" + str(line[0]))
             shutil.rmtree("/run/shm/bench/" + str(line[0]))
+            #GObject.idle_add(self.update)
         return readTimes
     
     def tablePrint(self,launchW,launchR):
         for line in self.tLaunch:
             self.lResultList.append([str(line[0]),str(launchW.pop(0)),str(launchR.pop(0))])  
-            
-    def plotCharge(self):
+           
+    def plotCharge(self,nameHD):
         plt = plot.plot(self.lResultList)
-        plt.printPlot(self.nameHD)
+        plt.printPlot(nameHD)
         
-        self.imagePlot.set_from_file(self.nameHD + ".png") 
+        self.imagePlot.set_from_file(nameHD + ".png") 
         
-    """def comboPartChanged(self,widget):
-        try:
-            textCommand = "df " + self.lcomboPart[self.comboPart.get_active()][0]
-        except:
-            return
-        commandOut = commands.getoutput(textCommand)
-        if(commandOut!="sh: df: not found"):
-            freeHD = int(commandOut.splitlines()[1].split()[3])/1024**2
-            totReq = self.tLaunch.__len__() * int(self.spinMax.get_value()) / 1024
-            if(totReq<freeHD):
-                self.partWindow.set_response_sensitive(Gtk.ResponseType.OK,True)
-                self.labelPart.set_text("")
-            else:
-                self.partWindow.set_response_sensitive(Gtk.ResponseType.OK,False)
-                labelText = "Not enough free space. " + str(totReq) +"GB required"               
-                self.labelPart.set_markup("<span foreground='red'>" + labelText + "</span>")
-        else:
-            self.throwError("Command df not found")
-      
-    def readPartition(self,hd):
-        self.lcomboPart.clear()
-        fPart = self.readFile("/proc/mounts")
-        for line in fPart:
-            line = line.split()
-            if re.match("/dev/" + hd + "\d",line[0]):
-                self.lcomboPart.append([line[0],line[1],line[2]])
-    """    
     def calcLaunch(self,Ini,Inc,Max,sInc):
         tLaunch = []
         Max = Max*1024
@@ -264,10 +231,12 @@ class main:
             fCSV.Window.destroy()         
               
     def quitAll(self,widget):
-        shutil.rmtree("/run/shm/bench")
+        shutil.rmtree("/run/shm/bench",ignore_errors=True)
         Gtk.main_quit()
         
 if __name__ == '__main__':
-    main()
+    GObject.threads_init()
+    app = main()
+    app.start()
     Gtk.main()
     
