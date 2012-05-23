@@ -21,6 +21,7 @@
 #
 
 import commands
+import os
 import re
 from gi.repository import Gtk
 
@@ -50,10 +51,13 @@ class messagePartition():
         commandOut = commands.getoutput(textCommand)
         if(commandOut!="sh: df: not found"):
             freeHD = int(commandOut.splitlines()[1].split()[3])/1024**2
-            #totReq = self.tLaunch.__len__() * int(self.spinMax.get_value()) / 1024
             if(self.totReq<freeHD):
-                self.Window.set_response_sensitive(Gtk.ResponseType.OK,True)
-                self.labelPart.set_text("")
+                if os.access(self.lcomboPart[self.comboPart.get_active()][1], os.W_OK):
+                    self.Window.set_response_sensitive(Gtk.ResponseType.OK,True)
+                    self.labelPart.set_text("")
+                else:
+                    self.Window.set_response_sensitive(Gtk.ResponseType.OK,False)              
+                    self.labelPart.set_markup("<span foreground='red'>No writable partition</span>")
             else:
                 self.Window.set_response_sensitive(Gtk.ResponseType.OK,False)
                 labelText = "Not enough free space. " + str(self.totReq) +"GB required"               
