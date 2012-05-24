@@ -36,6 +36,7 @@ class messagePartition():
         self.lcomboPart = builder.get_object("lComboPartition")
         self.comboPart = builder.get_object("comboPartition")
         self.labelPart = builder.get_object("labelPartition")
+        self.comboboxEntry = builder.get_object("combobox-entry")
         
         links = {"on_comboPartition_changed" : self.comboPartChanged}
         
@@ -44,24 +45,25 @@ class messagePartition():
         self.totReq = tLaunch.__len__() * int(spinMax.get_value()) / 1024
         
     def comboPartChanged(self,widget):
+        self.partText = self.comboboxEntry.get_text()
         try:
-            textCommand = "df " + self.lcomboPart[self.comboPart.get_active()][0]
+            textCommand = "df " + self.partText
         except:
             return
         commandOut = commands.getoutput(textCommand)
         if(commandOut!="sh: df: not found"):
-            freeHD = int(commandOut.splitlines()[1].split()[3])/1024**2
-            if(self.totReq<freeHD):
-                if os.access(self.lcomboPart[self.comboPart.get_active()][1], os.W_OK):
+            if os.access(self.partText, os.W_OK):
+                freeHD = int(commandOut.splitlines()[1].split()[3])/1024**2
+                if(self.totReq<freeHD):
                     self.Window.set_response_sensitive(Gtk.ResponseType.OK,True)
                     self.labelPart.set_text("")
                 else:
-                    self.Window.set_response_sensitive(Gtk.ResponseType.OK,False)              
-                    self.labelPart.set_markup("<span foreground='red'>No writable partition</span>")
+                    self.Window.set_response_sensitive(Gtk.ResponseType.OK,False)
+                    labelText = "Not enough free space. " + str(self.totReq) +"GB required"               
+                    self.labelPart.set_markup("<span foreground='red'>" + labelText + "</span>")
             else:
-                self.Window.set_response_sensitive(Gtk.ResponseType.OK,False)
-                labelText = "Not enough free space. " + str(self.totReq) +"GB required"               
-                self.labelPart.set_markup("<span foreground='red'>" + labelText + "</span>")
+                self.Window.set_response_sensitive(Gtk.ResponseType.OK,False)              
+                self.labelPart.set_markup("<span foreground='red'>No writable partition</span>")
         else:
             self.throwError("Command df not found")
       

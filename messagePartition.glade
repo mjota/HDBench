@@ -48,6 +48,9 @@
             <property name="can_focus">False</property>
             <property name="model">lComboPartition</property>
             <property name="active">0</property>
+            <property name="has_entry">True</property>
+            <property name="entry_text_column">1</property>
+            <property name="id_column">1</property>
             <signal name="changed" handler="on_comboPartition_changed" swapped="no"/>
             <child>
               <object class="GtkCellRendererText" id="cellrenderertext1"/>
@@ -56,8 +59,11 @@
               </attributes>
             </child>
             <child>
-              <object class="GtkCellRendererText" id="cellrenderertext2"/>
+              <object class="GtkCellRendererText" id="cellrenderertext2">
+                <property name="visible">False</property>
+              </object>
               <attributes>
+                <attribute name="editable">1</attribute>
                 <attribute name="text">1</attribute>
               </attributes>
             </child>
@@ -67,11 +73,17 @@
                 <attribute name="text">2</attribute>
               </attributes>
             </child>
+            <child internal-child="entry">
+              <object class="GtkEntry" id="combobox-entry">
+                <property name="can_focus">True</property>
+                <property name="overwrite_mode">True</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">3</property>
+            <property name="position">2</property>
           </packing>
         </child>
         <child>

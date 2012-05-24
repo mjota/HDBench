@@ -154,7 +154,7 @@ class main(threading.Thread):
             self.butExport.set_sensitive(True)
         
     def launchWrite(self):
-        mountP = self.mes.lcomboPart[self.mes.comboPart.get_active()][1]
+        mountP = self.mes.partText
         writeTimes = []
         for line in self.tLaunch:
             os.mkdir("/run/shm/bench/" + str(line[0]))
@@ -175,7 +175,7 @@ class main(threading.Thread):
         return writeTimes
     
     def launchRead(self):
-        mountP = self.mes.lcomboPart[self.mes.comboPart.get_active()][1]
+        mountP = self.mes.partText
         readTimes = []
         for line in self.tLaunch:
             textCommand = "cp -R " + mountP + "/" + str(line[0]) + " /run/shm/bench/"
