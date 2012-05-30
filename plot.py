@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 
 class plot:
     def __init__(self,resultList):
+        """Create lists for plot"""
         self.writeList = list()
         self.readList = list()
         self.xList = list()
@@ -32,6 +33,7 @@ class plot:
             self.readList.append(row[2])
         
     def printPlot(self,nameHD):
+        """Create plot with results"""
         plt.title(nameHD)
         plt.xticks(range(len(self.xList)), self.xList)
         plt.plot(self.writeList,label="Write")

@@ -28,7 +28,7 @@ from gi.repository import Gtk
 class messagePartition():
 
     def __init__(self,tLaunch,spinMax):
-        #Crea la ventana de trabajo principal y obtiene los objetos en Glade
+        """Get glade objects and create window"""
         builder = Gtk.Builder();
         builder.add_from_file("messagePartition.glade")
         
@@ -42,9 +42,11 @@ class messagePartition():
         
         builder.connect_signals(links)
         
+        #Space required on Hard Disk for Bench
         self.totReq = tLaunch.__len__() * int(spinMax.get_value()) / 1024
         
     def comboPartChanged(self,widget):
+        """When Combo change test writable and empty space"""
         self.partText = self.comboboxEntry.get_text()
         try:
             textCommand = "df " + self.partText
@@ -68,6 +70,7 @@ class messagePartition():
             self.throwError("Command df not found")
       
     def readPartition(self,hd):
+        "Read partitions lists and fills the combo"
         self.lcomboPart.clear()
         fPart = self.readFile("/proc/mounts")
         for line in fPart:
@@ -76,6 +79,7 @@ class messagePartition():
                 self.lcomboPart.append([line[0],line[1],line[2]])
                 
     def throwError(self,textError):
+        """Show a window with the Error"""
         dialog = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR,Gtk.ButtonsType.CLOSE, "Error")
         dialog.format_secondary_text(textError)
         dialog.run()
@@ -83,6 +87,7 @@ class messagePartition():
         dialog.destroy() 
         
     def readFile(self,nameFile):
+        """Standard function to read files"""
         try:
             fPart = open(nameFile,"r")
         except:

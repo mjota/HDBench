@@ -25,7 +25,7 @@ from gi.repository import Gtk
 
 class fileCSV:
     def __init__(self,nameHD):
-        #Crea la ventana de trabajo principal y obtiene los objetos en Glade
+        """Get glade objects and create main window"""
         builder = Gtk.Builder();
         builder.add_from_file("fileCSVWindow.glade")
         
@@ -34,6 +34,7 @@ class fileCSV:
         self.Window.set_current_name(nameHD + ".csv")
         
     def writeCSV(self,lResult,nameHD):
+        """Create CSV file"""
         fileW = open(self.Window.get_filename(),"w")
         fileC = csv.writer(fileW)
         fileC.writerow([nameHD,"Write Time (s)","Read Time (s)"])

@@ -27,12 +27,14 @@ import re
 import time
 from gi.repository import Gtk,GObject
 import threading
-import fileCSV,plot,messagePartition
+import fileCSV
+import plot
+import messagePartition
 
 class main(threading.Thread):
     def __init__(self):
+        """Get glade objects and create main window"""
         super(main,self).__init__()
-        #Crea la ventana de trabajo principal y obtiene los objetos en Glade
         builder = Gtk.Builder();
         builder.add_from_file("main.glade")
         
@@ -40,9 +42,7 @@ class main(threading.Thread):
                  "on_butRefresh_clicked" : self.initComboHD,
                  "on_butExport_clicked" : self.export,
                  "on_comboHD_changed" : self.comboHDChanged,
-                 "on_window_destroy" : self.quitAll,
-                 "on_errorWindow_response" : self.closeErrorWindow,
-                 "on_errorWindow_close" : self.closeErrorWindow}
+                 "on_window_destroy" : self.quitAll}
         
         builder.connect_signals(links)
         
@@ -60,19 +60,18 @@ class main(threading.Thread):
         self.butExport = builder.get_object("butExport")
         self.imagePlot = builder.get_object("imagePlot")
         
+        #Black bar on top, Ubuntu style
         context = self.topBar.get_style_context()
         context.add_class(Gtk.STYLE_CLASS_PRIMARY_TOOLBAR)
         
         self.initComboHD()
         
+        #Remove folder if exists. Create new
         shutil.rmtree("/run/shm/bench",ignore_errors=True)
         os.mkdir("/run/shm/bench")
-            
-    
-    def closeErrorWindow(self,widget,x):
-        self.errorWindow.hide()
-        
+                   
     def readFile(self,nameFile):
+        """Standard function to read files"""
         try:
             fPart = open(nameFile,"r")
         except:
@@ -81,27 +80,34 @@ class main(threading.Thread):
         return fPart
         
     def initComboHD(self,*widget):
+        """Fill the combo with hard disks.
+        Clear the ResultList
+        Print empty plot
+        
+        """
         self.lcomboHd.clear()
         self.textHDInfo.set_text("")
         
+        #Read from /proc/partitions the hard disks
         fPart = self.readFile("/proc/partitions")
         for line in fPart:
             if re.findall("sd[a-z]\s",line):
                 self.lcomboHd.append(re.findall("sd[a-z]",line)) 
-                
+            
         self.comboHD.set_active(0)
         self.lResultList.clear()
-        #self.imagePlot.set_from_file("blank.svg")
         self.plotCharge("Hard disk")
         
     def comboHDChanged(self,widget):
+        """Fill textHDinfo with the selected Hard disk"""
         tree_iter = self.comboHD.get_active_iter()  
         if tree_iter != None:
             model = self.comboHD.get_model()
             name = model[tree_iter][0]        
             self.textHDInfo.set_text(self.getHDInfo(name))
         
-    def getHDInfo(self,hd):        
+    def getHDInfo(self,hd):    
+        """Get name and capacity of a Hard Disk"""    
         textCommand = "udisks --show-info /dev/" + hd
         commandOut = commands.getoutput(textCommand)
         if(commandOut!="sh: udisks: not found"):
@@ -113,6 +119,10 @@ class main(threading.Thread):
         return modelHD + "\n" + str(int(sizeHD)/10**9) + "GB"
     
     def playBench(self,widget):
+        """Main Play Button
+        Launch messagePartition and benchs
+        
+        """
         #Collect data from spins
         spinIni = int(self.spinInitial.get_value())
         spinInc = int(self.spinInc.get_value())
@@ -154,6 +164,11 @@ class main(threading.Thread):
             self.butExport.set_sensitive(True)
         
     def launchWrite(self):
+        """Launch Write bench
+        Create files to copy from /dev/urandom to /run/shm/bench
+        Copy this files to selected partition and time it
+        
+        """
         mountP = self.mes.partText
         writeTimes = []
         for line in self.tLaunch:
@@ -175,6 +190,10 @@ class main(threading.Thread):
         return writeTimes
     
     def launchRead(self):
+        """Launch Read bench
+        Copy files from selected partition to /run/shm/bench and time it
+        
+        """    
         mountP = self.mes.partText
         readTimes = []
         for line in self.tLaunch:
@@ -186,20 +205,22 @@ class main(threading.Thread):
             
             shutil.rmtree(mountP + "/" + str(line[0]))
             shutil.rmtree("/run/shm/bench/" + str(line[0]))
-            #GObject.idle_add(self.update)
         return readTimes
     
     def tablePrint(self,launchW,launchR):
+        """Fill the ResultList"""
         for line in self.tLaunch:
             self.lResultList.append([str(line[0]),str(launchW.pop(0)),str(launchR.pop(0))])  
            
     def plotCharge(self,nameHD):
+        """Create the plot with results and place on main"""
         plt = plot.plot(self.lResultList)
         plt.printPlot(nameHD)
         
         self.imagePlot.set_from_file(nameHD + ".png") 
         
     def calcLaunch(self,Ini,Inc,Max,sInc):
+        """Fill the launch table for launchs"""
         tLaunch = []
         Max = Max*1024
         while(Max>Ini):
@@ -215,6 +236,7 @@ class main(threading.Thread):
         return tLaunch
         
     def throwError(self,textError):
+        """Show a window with the Error"""
         dialog = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR,Gtk.ButtonsType.CLOSE, "Error")
         dialog.format_secondary_text(textError)
         dialog.run()
@@ -222,6 +244,7 @@ class main(threading.Thread):
         dialog.destroy()  
         
     def export(self,widget):
+        """Create the .csv with results"""
         fCSV = fileCSV.fileCSV(self.nameHD)
         outfCSV = fCSV.Window.run()
         if (outfCSV == Gtk.ResponseType.OK):
@@ -231,6 +254,7 @@ class main(threading.Thread):
             fCSV.Window.destroy()         
               
     def quitAll(self,widget):
+        """Remove bench folder and quit"""
         shutil.rmtree("/run/shm/bench",ignore_errors=True)
         Gtk.main_quit()
         
